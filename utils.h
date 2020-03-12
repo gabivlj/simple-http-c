@@ -10,17 +10,15 @@
 #define utils_h
 
 //typedef uint8_t uint8;
-
-char* itoa(int val, int base){
-    
-    static char buf[32] = {0};
-    
+/**
+ * Integer to string.
+ */
+char* itoa(int val, int base) {
+    static char buf[32] = { 0 };
     int i = 30;
-    
-    for(; val && i ; --i, val /= base)
-    
+    for(; val && i ; --i, val /= base) {
         buf[i] = "0123456789abcdef"[val % base];
-    
+    }
     return &buf[i+1];
     
 }

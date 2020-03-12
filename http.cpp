@@ -20,6 +20,7 @@
 
 #define CLIENT_SIZE 10
 #define MAX_UNSIGNED_SHORT 65535
+#define SKIP_CHARS(many, integer) integer += many;
 
 const char* response_data = "{ \"uwudsdsdsdsdssdsddssd\": 2xsdsds }\n";
 char http_headers[2048] = "HTTP/2.0 400 OK\r\n"
@@ -41,7 +42,6 @@ next(int size, int current) {
     int i = current;
     while(server.clients[i] != -1) {
         i = (i + 1) % size;
-        printf("i < %i, %i\n", i, server.clients[i]);
     }
     return i;
 }
@@ -72,16 +72,18 @@ create_server_and_start(const char* port) {
     freeaddrinfo(res);
     
     if (server._socket == -1) {
+        // TODO: Informative message
         printf("error on socket");
         return;
     }
-    // listen on server_socket
+    
+    // listen on server_socket TODO: Better handling and replace 100000
     if (listen(server._socket, 100000) != 0) {
         std::cout << "ERROR LISTENING";
       return;
     }
-    
     int client_socket;
+    // TODO: DELETE
     std::cout << "EVERYTHING INITIALIZED ON: " << port << std::endl;
     struct sockaddr_in clientaddr;
     socklen_t addrlen;
@@ -108,33 +110,27 @@ handle_response(int client_socket,
     http_request http_r;
     /// TODO:(GABI) we don't need dynamic allocation here
     http_r.buffer = (char*) malloc(MAX_UNSIGNED_SHORT);
-
     // Fill buffer of the information
     int rcvd  = (int) recv(server.clients[original_pos], http_r.buffer, MAX_UNSIGNED_SHORT, 0);
-    
     // TODO: Handle these better?
     if (rcvd < 0) {
        fprintf(stderr, "recv() error\n");
     } else if (rcvd == 0) {
        fprintf(stderr, "Client disconnected unexpectedly.\n");
     }
-    
     // Get the method of request
     http_r.method = get_method(http_r.buffer);
-    printf("HEADER %s\n", get_header(http_r, "asdfasdfasdfsdaasfdfasdfsdafasdfsdaf").c_str());
     
-    // DEBUG //////////////////////////////////////////
+    // TODO: DELETE DEBUG
+    printf("HEADER %s\n", get_header(http_r, "asdfasdfasdfsdaasfdfasdfsdafasdfsdaf").c_str());
     printf("CLIENT POSITION: %d\n", original_pos);
     printf("Request Buffer: %s Method Number: %i\n", http_r.buffer, http_r.method);
-    /////////////////////////////////////////////////
     
     http_response response;
     // Client socket for a response by the user.
     response._client_socket = client_socket;
-    
     // Send the response (will be deleted) TODO: (GABI)Delete
     send(client_socket, http_headers, strlen(http_headers), 0);
-    
     // Shuts down the connection
     shutdown(client_socket, SHUT_RDWR);
     close(client_socket);
@@ -148,7 +144,7 @@ get_method(char* buffer) {
     // Buildup
     while (buffer[idx] != '\t' && buffer[idx] != ' ' && buffer[idx] != '\r' && idx < 8) {
         buildup[idx] = buffer[idx];
-        idx++;
+        SKIP_CHARS(1, idx);
     }
     
     /// NOTE(GABI): Maybe we can do better than this.
@@ -174,9 +170,9 @@ get_header(http_request& request, const char* header_name) {
     int i = 0;
     std::string builder = "";
     // skip first line
-    while (request.buffer[i+1] != '\n' && request.buffer[i]!='\r') i++;
+    while (request.buffer[i+1] != '\n' && request.buffer[i]!='\r') SKIP_CHARS(1, i);
     // move into first letter
-    i++; i++;
+    SKIP_CHARS(2, i);
     // get first letter
     char current_char = request.buffer[i];
     //  for keeping track of header_name and header_value
@@ -185,15 +181,16 @@ get_header(http_request& request, const char* header_name) {
     // Move into the :
     for (; i < request_length; ++i) {
         current_char = request.buffer[i];
-        char char_header = header_name[current_char_header++];
+        char char_header = header_name[current_char_header];
+        SKIP_CHARS(1, current_char_header);
         if (current_char == ':' && (found = true)) break;
         if (char_header != current_char) {
             // skip header_name
             while (i < request_length && request.buffer[i+1] != '\n' && request.buffer[i] != '\r') {
-                i++;
+                SKIP_CHARS(1, i);
             }
             // move into the first char
-            i += 2;
+            SKIP_CHARS(2, i);
             // if there are no more headers.
             if (i < request_length &&
                 request.buffer[i] == '\r' &&
@@ -205,14 +202,14 @@ get_header(http_request& request, const char* header_name) {
         }
     }
     // Skip : and whitespace
-    i += 2;
+    SKIP_CHARS(2, i);
     if (!found) return "";
     
     std::string header_value = "";
     // get the string
     while (i < request_length && request.buffer[i] != '\r') {
         header_value += request.buffer[i];
-        i++;
+        SKIP_CHARS(1, i);
     }
     
     return header_value;

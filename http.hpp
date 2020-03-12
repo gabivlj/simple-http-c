@@ -38,24 +38,30 @@
 #define DELETE_S  "DELETE"
 #define PATCH_S   "PATCH"
 
+/**
+ * We are gonna use const char* types with variables we know are gonna filled from user-called functions
+ * We are using std::string for dynamic string alloc but will be replaced.
+ */
+
 typedef uint8_t http_method;
 
-
-
 typedef struct {
-    std::string header_name;
-    std::string value;
+    const char* header_name;
+	const char* value;
 } http_header;
 
-typedef struct {
-    std::map<std::string, std::string> map;
-} key_pair_http;
-
-typedef struct {
-    std::string uri;
-    std::string uri_query;
-    key_pair_http query;
-} uri;
+//typedef struct {
+//    std::map<std::string, std::string> map;
+//} key_pair_http;
+//
+///**
+// * After some thought we won't be using this. See get_query_param()
+// */
+//typedef struct {
+//    std::string uri;
+//    std::string uri_query;
+//    key_pair_http query;
+//} uri;
 
 typedef struct {
     // Status (101, 200, 400...)
@@ -63,7 +69,7 @@ typedef struct {
     // String containing status info.
     std::string  status_str;
     // Array of headers
-    http_header* headers;
+    std::vector<http_header> headers;
     // Number of headers
     uint32_t     header_n;
     // String containing the body of the response.
@@ -77,8 +83,9 @@ typedef struct {
 typedef struct {
 	// The method of the request. See includes
     http_method   method;
-	// The route
-    uri           route;
+	// The route.
+//    uri           route;
+	std::string	  route;
 	// Will store the raw body for parsing
     std::string   body_raw;
 	// Buffer of the entire request
